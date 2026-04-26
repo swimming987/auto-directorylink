@@ -1,6 +1,29 @@
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
 const DEEPSEEK_MODEL = 'deepseek-chat';
 
+function ensureSidePanelBehavior() {
+  if (chrome.sidePanel && chrome.sidePanel.setPanelBehavior) {
+    chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(err => {
+      console.warn('[Background] Failed to set side panel behavior:', err);
+    });
+  }
+}
+
+chrome.runtime.onInstalled.addListener(() => {
+  ensureSidePanelBehavior();
+});
+
+ensureSidePanelBehavior();
+
+chrome.action.onClicked.addListener(async (tab) => {
+  if (!chrome.sidePanel || !chrome.sidePanel.open || !tab?.windowId) return;
+  try {
+    await chrome.sidePanel.open({ windowId: tab.windowId });
+  } catch (err) {
+    console.warn('[Background] Failed to open side panel on action click:', err);
+  }
+});
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'AI_MATCH') {
     handleAiMatch(message).then(sendResponse).catch(err => {

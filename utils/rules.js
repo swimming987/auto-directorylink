@@ -82,6 +82,10 @@ function scoreField(fieldKey, signals) {
     if (text === keyword) {
       maxScore = Math.max(maxScore, 1.0);
     } else if (text.includes(keyword)) {
+      if (keyword.length <= 4) {
+        const wordBoundary = new RegExp('(?<![a-z])' + keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![a-z])');
+        if (!wordBoundary.test(text)) continue;
+      }
       const lengthPenalty = keyword.length / Math.max(text.length, keyword.length);
       maxScore = Math.max(maxScore, 0.7 + lengthPenalty * 0.3);
     }

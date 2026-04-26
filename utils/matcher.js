@@ -30,6 +30,12 @@ function extractSignals(el) {
     }
   }
 
+  const wrappingLabel = el.closest('label');
+  if (wrappingLabel) {
+    const normalized = normalizeSignalText(wrappingLabel.textContent);
+    if (normalized && normalized.length < 120) signals.push(normalized);
+  }
+
   signals.push(...getAriaReferenceTexts(el, 'aria-labelledby'));
   signals.push(...getAriaReferenceTexts(el, 'aria-describedby'));
 
@@ -44,7 +50,7 @@ function extractSignals(el) {
 
   const parent = el.closest('div, li, td, p');
   if (parent) {
-    const labels = parent.querySelectorAll(':scope > label, :scope > span, :scope > p, :scope > legend, :scope > h2, :scope > h3, :scope > h4');
+    const labels = parent.querySelectorAll(':scope > label, :scope > span, :scope > p, :scope > legend, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6');
     for (const lbl of labels) {
       const txt = normalizeSignalText(lbl.textContent);
       if (txt && txt.length < 60) signals.push(txt);
@@ -151,6 +157,31 @@ function matchByContextPriority(signals, el) {
 
   if (text.includes('site link') || text.includes('website link') || text.includes('url question')) {
     return { field: 'url', confidence: 0.98, source: 'rule' };
+  }
+
+  const hasSiteNameContext =
+    text.includes("website's name") ||
+    text.includes('website name') ||
+    text.includes("site's name") ||
+    text.includes('site name') ||
+    text.includes('name of your') ||
+    text.includes('name of the');
+
+  if (hasSiteNameContext) {
+    return { field: 'name', confidence: 0.96, source: 'rule' };
+  }
+
+  const hasSiteDescContext =
+    text.includes("website's description") ||
+    text.includes('website description') ||
+    text.includes("site's description") ||
+    text.includes('site description') ||
+    text.includes('description of your') ||
+    text.includes('description of the');
+
+  if (hasSiteDescContext) {
+    const isShort = text.includes('short') || text.includes('brief') || text.includes('summary');
+    return { field: isShort ? 'shortDescription' : 'longDescription', confidence: 0.96, source: 'rule' };
   }
 
   if (text.includes('your name') || text.includes('submitter name') || text.includes('contact name')) {
@@ -316,7 +347,7 @@ async function matchElementsWithAI(elements, apiKey) {
     if (aiMatches && Array.isArray(aiMatches)) {
       for (const match of aiMatches) {
         const target = unmatched[match.index];
-        if (target && match.field) {
+        if (target && match.field && (match.confidence || 0) >= CONFIDENCE_THRESHOLD) {
           target.field = match.field;
           target.confidence = match.confidence;
           target.source = 'ai';
